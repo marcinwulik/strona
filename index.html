@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notatnik i Galeria Kotów</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#6366f1',secondary:'#8b5cf6'},borderRadius:{'none':'0px','sm':'4px',DEFAULT:'8px','md':'12px','lg':'16px','xl':'20px','2xl':'24px','3xl':'32px','full':'9999px','button':'8px'}}}}</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <style>
+        :where([class^="ri-"])::before { content: "\f3c2"; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .note-editor {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 50;
+            background-color: white;
+        }
+        
+        #editor {
+            width: 100%;
+            height: calc(100% - 60px);
+            padding: 20px;
+            border: none;
+            resize: none;
+            outline: none;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        
+        .cat-card {
+            transition: all 0.3s ease;
+        }
+        
+        .cat-card:hover {
+            transform: scale(1.05);
+        }
+        
+        .shake-animation:hover {
+            animation: shake 0.5s;
+        }
+        
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+        
+        .jump-animation:hover {
+            animation: jump 0.5s;
+        }
+        
+        @keyframes jump {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0); }
+        }
+        
+        .box-opening {
+            animation: boxOpen 1s forwards;
+        }
+        
+        @keyframes boxOpen {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
+        .tab-transition {
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <header class="bg-white shadow-sm">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-['Pacifico'] text-primary">logo</h1>
+                <nav>
+                    <ul class="flex space-x-2">
+                        <li>
+                            <button class="tab-btn px-4 py-2 rounded-button bg-primary text-white whitespace-nowrap" data-tab="notes">
+                                <i class="ri-file-list-line mr-1"></i> Notatki
+                            </button>
+                        </li>
+                        <li>
+                            <button class="tab-btn px-4 py-2 rounded-button bg-white text-gray-700 hover:bg-gray-100 whitespace-nowrap" data-tab="email">
+                                <i class="ri-mail-line mr-1"></i> Wyślij Email
+                            </button>
+                        </li>
+                        <li>
+                            <button class="tab-btn px-4 py-2 rounded-button bg-white text-gray-700 hover:bg-gray-100 whitespace-nowrap" data-tab="animations">
+                                <i class="ri-magic-line mr-1"></i> Animacje
+                            </button>
+                        </li>
+                        <li>
+                            <button class="tab-btn px-4 py-2 rounded-button bg-white text-gray-700 hover:bg-gray-100 whitespace-nowrap" data-tab="cats">
+                                <i class="ri-bear-smile-line mr-1"></i> Grube Koty
+                            </button>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <!-- Notatki -->
+        <div id="notes-tab" class="tab-content active">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Twoje Notatki</h2>
+                <p class="text-gray-600">Wybierz sekcję, aby rozpocząć edycję notatki.</p>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4" id="notes-grid">
+                <!-- Notatki zostaną wygenerowane przez JavaScript -->
+            </div>
+        </div>
+
+        <!-- Edytor notatek -->
+        <div class="note-editor" id="note-editor">
+            <div class="bg-white shadow-md p-4 flex justify-between items-center">
+                <h3 class="text-lg font-medium" id="editor-title">Notatka</h3>
+                <div class="flex space-x-2">
+                    <button id="save-note" class="px-4 py-2 bg-primary text-white rounded-button whitespace-nowrap">
+                        <i class="ri-save-line mr-1"></i> Zapisz
+                    </button>
+                    <button id="close-editor" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-button whitespace-nowrap">
+                        <i class="ri-close-line mr-1"></i> Zamknij
+                    </button>
+                </div>
+            </div>
+            <textarea id="editor" placeholder="Zacznij pisać tutaj..."></textarea>
+        </div>
+
+        <!-- Email -->
+        <div id="email-tab" class="tab-content">
+            <div class="max-w-2xl mx-auto">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Wyślij Email</h2>
+                
+                <form id="email-form" class="bg-white shadow-md rounded p-6">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="email-to">
+                            Adres Email
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="ri-mail-line text-gray-400"></i>
+                            </div>
+                            <input class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary" id="email-to" type="email" placeholder="odbiorca@example.com">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="email-subject">
+                            Temat
+                        </label>
+                        <input class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary" id="email-subject" type="text" placeholder="Temat wiadomości">
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="email-message">
+                            Wiadomość
+                        </label>
+                        <textarea class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary h-40" id="email-message" placeholder="Treść wiadomości..."></textarea>
+                    </div>
+                    
+                    <div class="flex items-center justify-end">
+                        <button id="send-email" class="bg-primary hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-button focus:outline-none focus:shadow-outline whitespace-nowrap" type="button">
+                            <i class="ri-send-plane-line mr-1"></i> Wyślij
+                        </button>
+                    </div>
+                </form>
+                
+                <div id="email-status" class="mt-4 hidden">
+                    <div class="p-4 rounded"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Animacje -->
+        <div id="animations-tab" class="tab-content">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Animacje i Narzędzia</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="animations-grid">
+                <!-- Animacje zostaną wygenerowane przez JavaScript -->
+            </div>
+            
+            <div class="mt-12">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Statystyki</h3>
+                <div class="bg-white shadow-md rounded-lg p-4">
+                    <div id="stats-chart" class="w-full h-80"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grube Koty -->
+        <div id="cats-tab" class="tab-content">
+            <div class="flex flex-col md:flex-row gap-6">
+                <div class="w-full md:w-2/3">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Galeria Grubych Kotów</h2>
+                    
+                    <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-bold text-gray-700">Otwórz Skrzynkę</h3>
+                            <div id="box-timer" class="text-gray-600 font-medium">
+                                <i class="ri-time-line mr-1"></i> <span>00:00:00</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-center">
+                            <button id="open-box" class="bg-primary hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-button whitespace-nowrap" disabled>
+                                <i class="ri-gift-line mr-1"></i> Otwórz Skrzynkę
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white shadow-md rounded-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-700 mb-4">Twoja Kolekcja</h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 gap-4" id="cat-collection">
+                            <!-- Kolekcja kotów zostanie wygenerowana przez JavaScript -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="w-full md:w-1/3">
+                    <div class="bg-white shadow-md rounded-lg p-6 sticky top-4">
+                        <h3 class="text-lg font-bold text-gray-700 mb-4">Statystyki</h3>
+                        
+                        <div class="mb-4">
+                            <p class="text-gray-600 mb-1">Zebrane koty:</p>
+                            <p class="text-2xl font-bold text-primary" id="cats-count">0/12</p>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <p class="text-gray-600 mb-1">Odblokowane animacje:</p>
+                            <p class="text-2xl font-bold text-secondary" id="animations-count">0/4</p>
+                        </div>
+                        
+                        <div>
+                            <p class="text-gray-600 mb-2">Historia otwarć:</p>
+                            <ul class="text-sm text-gray-700 space-y-1" id="box-history">
+                                <li class="text-gray-400 italic">Brak historii</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal dla wylosowanego kota -->
+    <div id="cat-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800" id="modal-cat-name">Nowy Kot!</h3>
+                <button id="close-modal" class="text-gray-500 hover:text-gray-700">
+                    <i class="ri-close-line text-2xl"></i>
+                </button>
+            </div>
+            
+            <div class="flex justify-center mb-4">
+                <div class="w-48 h-48 rounded-lg overflow-hidden" id="modal-cat-image-container">
+                    <img id="modal-cat-image" class="w-full h-full object-cover" src="" alt="Kot">
+                </div>
+            </div>
+            
+            <div class="text-center mb-4">
+                <p class="text-gray-600" id="modal-cat-rarity">Rzadkość: Zwykły</p>
+            </div>
+            
+            <div class="text-center">
+                <p class="text-gray-700 mb-4" id="modal-cat-description">Opis kota</p>
+                
+                <button id="add-to-collection" class="bg-primary hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-button whitespace-nowrap">
+                    Dodaj do kolekcji
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dane notatek
+        const notes = Array.from({ length: 20 }, (_, i) => ({
+            id: i + 1,
+            title: `Notatka ${i + 1}`,
+            content: ''
+        }));
+
+        // Dane animacji
+        const animations = [
+            { id: 1, name: 'Potrząsanie', description: 'Efekt potrząsania elementem przy najechaniu', class: 'shake-animation', unlocked: false },
+            { id: 2, name: 'Skakanie', description: 'Efekt podskakiwania elementu przy najechaniu', class: 'jump-animation', unlocked: false },
+            { id: 3, name: 'Obracanie', description: 'Efekt obracania elementu przy najechaniu', class: 'rotate-animation', unlocked: false },
+            { id: 4, name: 'Pulsowanie', description: 'Efekt pulsowania elementu przy najechaniu', class: 'pulse-animation', unlocked: false }
+        ];
+
+        // Dane kotów
+        const cats = [
+            { id: 1, name: 'Puszek', rarity: 'Zwykły', description: 'Puszysty kot o pomarańczowym futrze', image: 'https://public.readdy.ai/ai/img_res/1d8e5e311b363383e8645d858ddd8281.jpg', collected: false },
+            { id: 2, name: 'Mruczek', rarity: 'Zwykły', description: 'Szary kot z białymi łapkami', image: 'https://public.readdy.ai/ai/img_res/1f6232c9a24efd8d22cd8e77c2a035e6.jpg', collected: false },
+            { id: 3, name: 'Kłębuszek', rarity: 'Rzadki', description: 'Bardzo gruby kot w czarno-białe łaty', image: 'https://public.readdy.ai/ai/img_res/dc88f80715f5563aa6a6348ec7109d82.jpg', collected: false },
+            { id: 4, name: 'Baron', rarity: 'Rzadki', description: 'Dostojny brązowy kot brytyjski', image: 'https://public.readdy.ai/ai/img_res/d6d4a3be199cbfca5227a313ac8d9383.jpg', collected: false },
+            { id: 5, name: 'Kulka', rarity: 'Epicki', description: 'Idealnie okrągły kot o gęstym futrze', image: 'https://public.readdy.ai/ai/img_res/75ebb9a053050238781f1642ef10e480.jpg', collected: false },
+            { id: 6, name: 'Śnieżka', rarity: 'Zwykły', description: 'Biały kot z niebieskimi oczami', image: 'https://public.readdy.ai/ai/img_res/fa61992ebec68002b9d9a882c4e325b9.jpg', collected: false },
+            { id: 7, name: 'Garfield', rarity: 'Rzadki', description: 'Bardzo gruby rudy kot z leniwym spojrzeniem', image: 'https://public.readdy.ai/ai/img_res/a4704fafeec66407be6158efc551f875.jpg', collected: false },
+            { id: 8, name: 'Pączek', rarity: 'Epicki', description: 'Kot o idealnie okrągłym kształcie przypominającym pączka', image: 'https://public.readdy.ai/ai/img_res/60449dfdbca1354ee024eb05ae30350f.jpg', collected: false },
+            { id: 9, name: 'Klusek', rarity: 'Legendarny', description: 'Najgrubszy kot na świecie, ledwo się porusza', image: 'https://public.readdy.ai/ai/img_res/a7321aed3ddf40e654780844661f9dbe.jpg', collected: false },
+            { id: 10, name: 'Miś', rarity: 'Zwykły', description: 'Puszysty brązowy kot przypominający misia', image: 'https://public.readdy.ai/ai/img_res/872a182c563398637e860b7c5babd6b2.jpg', collected: false },
+            { id: 11, name: 'Księżniczka', rarity: 'Rzadki', description: 'Elegancka kotka z długim futrem', image: 'https://public.readdy.ai/ai/img_res/b77b93449afa9a85a6380423e4f37fe7.jpg', collected: false },
+            { id: 12, name: 'Baryłka', rarity: 'Legendarny', description: 'Kot tak gruby, że przypomina baryłkę', image: 'https://public.readdy.ai/ai/img_res/77572808c9a7fade94eae970a8cb5fe7.jpg', collected: false }
+        ];
+
+        // Inicjalizacja
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inicjalizacja zakładek
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabId = button.getAttribute('data-tab');
+                    
+                    // Aktywacja przycisku
+                    tabButtons.forEach(btn => {
+                        if (btn === button) {
+                            btn.classList.add('bg-primary', 'text-white');
+                            btn.classList.remove('bg-white', 'text-gray-700', 'hover:bg-gray-100');
+                        } else {
+                            btn.classList.remove('bg-primary', 'text-white');
+                            btn.classList.add('bg-white', 'text-gray-700', 'hover:bg-gray-100');
+                        }
+                    });
+                    
+                    // Aktywacja zawartości
+                    tabContents.forEach(content => {
+                        if (content.id === `${tabId}-tab`) {
+                            content.classList.add('active');
+                        } else {
+                            content.classList.remove('active');
+                        }
+                    });
+                });
+            });
+            
+            // Inicjalizacja notatek
+            initNotes();
+            
+            // Inicjalizacja animacji
+            initAnimations();
+            
+            // Inicjalizacja kotów
+            initCats();
+            
+            // Inicjalizacja wykresu
+            initChart();
+        });
+
+        // Funkcje dla notatek
+        function initNotes() {
+            const notesGrid = document.getElementById('notes-grid');
+            const noteEditor = document.getElementById('note-editor');
+            const editor = document.getElementById('editor');
+            const editorTitle = document.getElementById('editor-title');
+            const saveNoteBtn = document.getElementById('save-note');
+            const closeEditorBtn = document.getElementById('close-editor');
+            
+            let currentNoteId = null;
+            
+            // Generowanie siatki notatek
+            notes.forEach(note => {
+                const noteElement = document.createElement('div');
+                noteElement.className = 'bg-white shadow-md rounded-lg p-4 hover:shadow-lg transition-shadow cursor-pointer';
+                noteElement.innerHTML = `
+                    <h3 class="text-lg font-medium text-gray-800">${note.title}</h3>
+                    <p class="text-gray-500 text-sm mt-1">${note.content ? 'Edytowano' : 'Brak treści'}</p>
+                `;
+                
+                noteElement.addEventListener('click', () => {
+                    currentNoteId = note.id;
+                    editorTitle.textContent = note.title;
+                    editor.value = note.content;
+                    noteEditor.style.display = 'block';
+                    editor.focus();
+                });
+                
+                notesGrid.appendChild(noteElement);
+            });
+            
+            // Obsługa edytora
+            saveNoteBtn.addEventListener('click', () => {
+                if (currentNoteId) {
+                    const noteIndex = notes.findIndex(note => note.id === currentNoteId);
+                    if (noteIndex !== -1) {
+                        notes[noteIndex].content = editor.value;
+                        
+                        // Aktualizacja UI
+                        const noteElements = notesGrid.querySelectorAll('div');
+                        const noteElement = noteElements[noteIndex];
+                        const noteStatus = noteElement.querySelector('p');
+                        noteStatus.textContent = editor.value ? 'Edytowano' : 'Brak treści';
+                    }
+                }
+                
+                noteEditor.style.display = 'none';
+            });
+            
+            closeEditorBtn.addEventListener('click', () => {
+                noteEditor.style.display = 'none';
+            });
+            
+            // Obsługa klawisza Tab w edytorze
+            editor.addEventListener('keydown', function(e) {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    
+                    const start = this.selectionStart;
+                    const end = this.selectionEnd;
+                    
+                    this.value = this.value.substring(0, start) + '\t' + this.value.substring(end);
+                    this.selectionStart = this.selectionEnd = start + 1;
+                }
+            });
+        }
+
+        // Funkcje dla animacji
+        function initAnimations() {
+            const animationsGrid = document.getElementById('animations-grid');
+            
+            animations.forEach(animation => {
+                const animationElement = document.createElement('div');
+                animationElement.className = 'bg-white shadow-md rounded-lg p-6 hover:shadow-lg transition-shadow';
+                
+                animationElement.innerHTML = `
+                    <h3 class="text-lg font-bold text-gray-800 mb-2">${animation.name}</h3>
+                    <p class="text-gray-600 mb-4">${animation.description}</p>
+                    <div class="flex justify-center">
+                        <div class="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center ${animation.unlocked ? animation.class : ''} ${!animation.unlocked ? 'opacity-50' : ''}">
+                            <i class="ri-emotion-laugh-line text-4xl text-gray-500"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 text-center">
+                        <span class="inline-block px-3 py-1 text-sm rounded-full ${animation.unlocked ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}">
+                            ${animation.unlocked ? 'Odblokowano' : 'Zablokowano'}
+                        </span>
+                    </div>
+                `;
+                
+                animationsGrid.appendChild(animationElement);
+            });
+        }
+
+        // Funkcje dla kotów
+        function initCats() {
+            const catCollection = document.getElementById('cat-collection');
+            const openBoxBtn = document.getElementById('open-box');
+            const boxTimer = document.getElementById('box-timer').querySelector('span');
+            const catsCount = document.getElementById('cats-count');
+            const animationsCount = document.getElementById('animations-count');
+            const boxHistory = document.getElementById('box-history');
+            const catModal = document.getElementById('cat-modal');
+            const modalCatName = document.getElementById('modal-cat-name');
+            const modalCatImage = document.getElementById('modal-cat-image');
+            const modalCatRarity = document.getElementById('modal-cat-rarity');
+            const modalCatDescription = document.getElementById('modal-cat-description');
+            const addToCollectionBtn = document.getElementById('add-to-collection');
+            const closeModalBtn = document.getElementById('close-modal');
+            
+            let currentCat = null;
+            let nextBoxTime = localStorage.getItem('nextBoxTime') ? parseInt(localStorage.getItem('nextBoxTime')) : 0;
+            let collectedCats = JSON.parse(localStorage.getItem('collectedCats')) || [];
+            let unlockedAnimations = JSON.parse(localStorage.getItem('unlockedAnimations')) || [];
+            let boxOpenHistory = JSON.parse(localStorage.getItem('boxOpenHistory')) || [];
+            
+            // Aktualizacja statystyk
+            updateStats();
+            
+            // Aktualizacja timera
+            updateTimer();
+            setInterval(updateTimer, 1000);
+            
+            // Obsługa otwierania skrzynki
+            openBoxBtn.addEventListener('click', () => {
+                // Losowanie kota
+                const randomCat = getRandomCat();
+                currentCat = randomCat;
+                
+                // Losowanie animacji (25% szans)
+                const animationUnlocked = Math.random() < 0.25;
+                let unlockedAnimation = null;
+                
+                if (animationUnlocked) {
+                    const lockedAnimations = animations.filter(a => !unlockedAnimations.includes(a.id));
+                    if (lockedAnimations.length > 0) {
+                        const randomAnimation = lockedAnimations[Math.floor(Math.random() * lockedAnimations.length)];
+                        unlockedAnimations.push(randomAnimation.id);
+                        unlockedAnimation = randomAnimation;
+                        localStorage.setItem('unlockedAnimations', JSON.stringify(unlockedAnimations));
+                    }
+                }
+                
+                // Aktualizacja czasu następnego otwarcia
+                nextBoxTime = Date.now() + 2 * 60 * 60 * 1000; // 2 godziny
+                localStorage.setItem('nextBoxTime', nextBoxTime.toString());
+                
+                // Dodanie do historii
+                const now = new Date();
+                const historyEntry = {
+                    date: now.toLocaleDateString('pl-PL'),
+                    time: now.toLocaleTimeString('pl-PL'),
+                    cat: randomCat.name,
+                    animation: unlockedAnimation ? unlockedAnimation.name : null
+                };
+                
+                boxOpenHistory.unshift(historyEntry);
+                if (boxOpenHistory.length > 10) boxOpenHistory.pop();
+                localStorage.setItem('boxOpenHistory', JSON.stringify(boxOpenHistory));
+                
+                // Aktualizacja UI
+                updateTimer();
+                
+                // Wyświetlenie modalu
+                modalCatName.textContent = randomCat.name;
+                modalCatImage.src = randomCat.image;
+                modalCatRarity.textContent = `Rzadkość: ${randomCat.rarity}`;
+                modalCatDescription.textContent = randomCat.description;
+                
+                // Animacja otwarcia
+                modalCatImage.classList.add('box-opening');
+                setTimeout(() => {
+                    modalCatImage.classList.remove('box-opening');
+                }, 1000);
+                
+                catModal.classList.remove('hidden');
+                
+                // Aktualizacja historii
+                updateBoxHistory();
+            });
+            
+            // Dodawanie kota do kolekcji
+            addToCollectionBtn.addEventListener('click', () => {
+                if (currentCat && !collectedCats.includes(currentCat.id)) {
+                    collectedCats.push(currentCat.id);
+                    localStorage.setItem('collectedCats', JSON.stringify(collectedCats));
+                    
+                    // Aktualizacja UI
+                    updateCatCollection();
+                    updateStats();
+                }
+                
+                catModal.classList.add('hidden');
+            });
+            
+            // Zamykanie modalu
+            closeModalBtn.addEventListener('click', () => {
+                catModal.classList.add('hidden');
+            });
+            
+            // Inicjalizacja kolekcji
+            updateCatCollection();
+            updateBoxHistory();
+            
+            // Funkcje pomocnicze
+            function updateTimer() {
+                const now = Date.now();
+                const timeLeft = Math.max(0, nextBoxTime - now);
+                
+                if (timeLeft === 0) {
+                    boxTimer.textContent = 'Dostępne teraz!';
+                    openBoxBtn.disabled = false;
+                    openBoxBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                } else {
+                    const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+                    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                    
+                    boxTimer.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    openBoxBtn.disabled = true;
+                    openBoxBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            }
+            
+            function getRandomCat() {
+                // Losowanie z uwzględnieniem rzadkości
+                const rarityWeights = {
+                    'Zwykły': 0.6,
+                    'Rzadki': 0.3,
+                    'Epicki': 0.08,
+                    'Legendarny': 0.02
+                };
+                
+                const rarities = Object.keys(rarityWeights);
+                const randomValue = Math.random();
+                let cumulativeWeight = 0;
+                let selectedRarity = rarities[0];
+                
+                for (const rarity of rarities) {
+                    cumulativeWeight += rarityWeights[rarity];
+                    if (randomValue <= cumulativeWeight) {
+                        selectedRarity = rarity;
+                        break;
+                    }
+                }
+                
+                // Filtrowanie kotów według rzadkości
+                const catsOfRarity = cats.filter(cat => cat.rarity === selectedRarity);
+                
+                // Losowy wybór z danej rzadkości
+                return catsOfRarity[Math.floor(Math.random() * catsOfRarity.length)];
+            }
+            
+            function updateCatCollection() {
+                catCollection.innerHTML = '';
+                
+                if (collectedCats.length === 0) {
+                    const emptyState = document.createElement('div');
+                    emptyState.className = 'col-span-full text-center py-8';
+                    emptyState.innerHTML = `
+                        <i class="ri-emotion-sad-line text-4xl text-gray-400 mb-2"></i>
+                        <p class="text-gray-500">Brak zebranych kotów</p>
+                    `;
+                    catCollection.appendChild(emptyState);
+                    return;
+                }
+                
+                // Filtrowanie zebranych kotów
+                const collectedCatsData = cats.filter(cat => collectedCats.includes(cat.id));
+                
+                collectedCatsData.forEach(cat => {
+                    const catElement = document.createElement('div');
+                    catElement.className = 'cat-card bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md';
+                    
+                    // Dodanie odpowiednich klas animacji
+                    const catAnimations = animations.filter(a => unlockedAnimations.includes(a.id));
+                    const randomAnimation = catAnimations.length > 0 ? catAnimations[Math.floor(Math.random() * catAnimations.length)] : null;
+                    
+                    if (randomAnimation) {
+                        catElement.classList.add(randomAnimation.class);
+                    }
+                    
+                    catElement.innerHTML = `
+                        <div class="w-full aspect-square overflow-hidden">
+                            <img src="${cat.image}" alt="${cat.name}" class="w-full h-full object-cover">
+                        </div>
+                        <div class="p-3">
+                            <h4 class="font-medium text-gray-800">${cat.name}</h4>
+                            <p class="text-xs text-gray-500">${cat.rarity}</p>
+                        </div>
+                    `;
+                    
+                    catCollection.appendChild(catElement);
+                });
+            }
+            
+            function updateBoxHistory() {
+                boxHistory.innerHTML = '';
+                
+                if (boxOpenHistory.length === 0) {
+                    boxHistory.innerHTML = '<li class="text-gray-400 italic">Brak historii</li>';
+                    return;
+                }
+                
+                boxOpenHistory.forEach(entry => {
+                    const historyItem = document.createElement('li');
+                    historyItem.className = 'text-gray-700';
+                    
+                    let content = `${entry.date}, ${entry.time} - ${entry.cat}`;
+                    if (entry.animation) {
+                        content += ` + ${entry.animation}`;
+                    }
+                    
+                    historyItem.textContent = content;
+                    boxHistory.appendChild(historyItem);
+                });
+            }
+            
+            function updateStats() {
+                catsCount.textContent = `${collectedCats.length}/${cats.length}`;
+                animationsCount.textContent = `${unlockedAnimations.length}/${animations.length}`;
+                
+                // Aktualizacja animacji
+                animations.forEach((animation, index) => {
+                    animation.unlocked = unlockedAnimations.includes(animation.id);
+                });
+            }
+        }
+
+        // Funkcje dla wykresu
+        function initChart() {
+            const chartContainer = document.getElementById('stats-chart');
+            const chart = echarts.init(chartContainer);
+            
+            const option = {
+                animation: false,
+                title: {
+                    text: 'Statystyki Użycia Aplikacji',
+                    left: 'center',
+                    textStyle: {
+                        color: '#1f2937'
+                    }
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                    borderColor: '#e5e7eb',
+                    textStyle: {
+                        color: '#1f2937'
+                    }
+                },
+                legend: {
+                    data: ['Notatki', 'Otwarte Skrzynki', 'Wysłane Maile'],
+                    bottom: 0,
+                    textStyle: {
+                        color: '#1f2937'
+                    }
+                },
+                grid: {
+                    left: 0,
+                    right: 0,
+                    top: 50,
+                    bottom: 50,
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: ['Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Ndz'],
+                    axisLine: {
+                        lineStyle: {
+                            color: '#d1d5db'
+                        }
+                    },
+                    axisLabel: {
+                        color: '#4b5563'
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLine: {
+                        show: false
+                    },
+                    axisLabel: {
+                        color: '#4b5563'
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: '#e5e7eb'
+                        }
+                    }
+                },
+                series: [
+                    {
+                        name: 'Notatki',
+                        type: 'line',
+                        smooth: true,
+                        data: [5, 7, 3, 5, 2, 0, 1],
+                        lineStyle: {
+                            width: 3,
+                            color: 'rgba(87, 181, 231, 1)'
+                        },
+                        symbol: 'none',
+                        areaStyle: {
+                            color: {
+                                type: 'linear',
+                                x: 0,
+                                y: 0,
+                                x2: 0,
+                                y2: 1,
+                                colorStops: [
+                                    { offset: 0, color: 'rgba(87, 181, 231, 0.2)' },
+                                    { offset: 1, color: 'rgba(87, 181, 231, 0.01)' }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        name: 'Otwarte Skrzynki',
+                        type: 'line',
+                        smooth: true,
+                        data: [2, 2, 0, 1, 3, 2, 1],
+                        lineStyle: {
+                            width: 3,
+                            color: 'rgba(141, 211, 199, 1)'
+                        },
+                        symbol: 'none',
+                        areaStyle: {
+                            color: {
+                                type: 'linear',
+                                x: 0,
+                                y: 0,
+                                x2: 0,
+                                y2: 1,
+                                colorStops: [
+                                    { offset: 0, color: 'rgba(141, 211, 199, 0.2)' },
+                                    { offset: 1, color: 'rgba(141, 211, 199, 0.01)' }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        name: 'Wysłane Maile',
+                        type: 'line',
+                        smooth: true,
+                        data: [0, 1, 4, 2, 1, 0, 0],
+                        lineStyle: {
+                            width: 3,
+                            color: 'rgba(251, 191, 114, 1)'
+                        },
+                        symbol: 'none',
+                        areaStyle: {
+                            color: {
+                                type: 'linear',
+                                x: 0,
+                                y: 0,
+                                x2: 0,
+                                y2: 1,
+                                colorStops: [
+                                    { offset: 0, color: 'rgba(251, 191, 114, 0.2)' },
+                                    { offset: 1, color: 'rgba(251, 191, 114, 0.01)' }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            };
+            
+            chart.setOption(option);
+            
+            // Responsywność wykresu
+            window.addEventListener('resize', function() {
+                chart.resize();
+            });
+        }
+
+        // Obsługa formularza email
+        document.getElementById('send-email').addEventListener('click', function() {
+            const emailTo = document.getElementById('email-to').value;
+            const emailSubject = document.getElementById('email-subject').value;
+            const emailMessage = document.getElementById('email-message').value;
+            const emailStatus = document.getElementById('email-status');
+            const statusDiv = emailStatus.querySelector('div');
+            
+            // Walidacja
+            if (!emailTo || !emailSubject || !emailMessage) {
+                emailStatus.classList.remove('hidden');
+                statusDiv.className = 'p-4 rounded bg-red-100 text-red-700';
+                statusDiv.textContent = 'Wypełnij wszystkie pola formularza.';
+                return;
+            }
+            
+            // Symulacja wysyłania
+            emailStatus.classList.remove('hidden');
+            statusDiv.className = 'p-4 rounded bg-blue-100 text-blue-700';
+            statusDiv.textContent = 'Wysyłanie wiadomości...';
+            
+            setTimeout(() => {
+                // Symulacja sukcesu
+                statusDiv.className = 'p-4 rounded bg-green-100 text-green-700';
+                statusDiv.textContent = 'Wiadomość została wysłana pomyślnie!';
+                
+                // Czyszczenie formularza
+                document.getElementById('email-to').value = '';
+                document.getElementById('email-subject').value = '';
+                document.getElementById('email-message').value = '';
+                
+                // Ukrycie statusu po 5 sekundach
+                setTimeout(() => {
+                    emailStatus.classList.add('hidden');
+                }, 5000);
+            }, 1500);
+        });
+    </script>
+</body>
+</html>
